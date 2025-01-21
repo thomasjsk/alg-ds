@@ -4,6 +4,7 @@ mod binary_search_list;
 mod bubble_sort;
 mod linear_search;
 mod queue;
+mod stack;
 mod two_crystal_balls;
 
 fn main() {

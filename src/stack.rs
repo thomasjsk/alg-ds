@@ -3,117 +3,85 @@ use std::rc::Rc;
 
 pub struct Node<T> {
     value: T,
-    next: Option<Rc<RefCell<Node<T>>>>,
+    prev: Option<Rc<RefCell<Node<T>>>>,
 }
 
 impl<T> Node<T> {
-    pub fn new(value: T) -> Node<T> {
-        Node { value, next: None }
-    }
-
-    pub fn append(&mut self, value: T) {
-        self.next = Some(Rc::new(RefCell::new(Node::new(value))));
+    pub fn new(value: T) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Node { value, prev: None }))
     }
 }
 
-pub struct Queue<T: Clone> {
-    length: usize,
+pub struct Stack<T: Clone> {
     head: Option<Rc<RefCell<Node<T>>>>,
-    tail: Option<Rc<RefCell<Node<T>>>>,
+    length: usize,
 }
 
-impl<T: Clone> Queue<T> {
+impl<T: Clone> Stack<T> {
     pub fn new() -> Self {
-        Queue {
-            length: 0,
+        Stack {
             head: None,
-            tail: None,
+            length: 0,
         }
     }
 
-    pub fn enqueue(&mut self, value: T) {
-        // Create new node with the given value
-        let node = Rc::new(RefCell::new(Node::new(value)));
+    pub fn push(&mut self, value: T) {
+        let new_node = Node::new(value);
         self.length += 1;
 
-        match self.tail.take() {
-            // If we have a tail
-            Some(tail) => {
-                // Set tail's next to point to the new node (borrowing the mut with RefCell)
-                // Tail is the last node of the queue, so we're just extending the recurrent "chain"
-                tail.borrow_mut().next = Some(node.clone());
-            }
-            None => {
-                // no tail == no head, so we're just adding the first node here
-                self.head = Some(node.clone()) // #THERE
-            }
+        if self.head.is_none() {
+            self.head = Some(new_node);
+            return;
         }
 
-        // Setting queue's tail prop to point to the last added node
-        // If we added first node then it will point to the head, (but with new, cause head cloned [created new] ref #THERE)
-        self.tail = Some(node);
+        let head = self.head.clone().unwrap();
+        new_node.borrow_mut().prev = Some(head);
+        self.head = Some(new_node);
     }
 
-    pub fn deque(&mut self) -> Option<T> {
+    pub fn pop(&mut self) -> Option<T> {
         if self.head.is_none() {
-            // No head -> return
             return None;
         }
+        self.length -= 1;
 
-        // We're accessing the head value through a map fn but we could just unwrap it from the Option. Works the same
         self.head.take().map(|old_head| {
-            // Copying the next node of a header to then assign it to the queue.head in #HERE
-            let next_node = old_head.borrow().next.clone();
+            let next_head = old_head.borrow_mut().prev.clone();
+            self.head = next_head;
 
-            self.head = next_node; // #HERE
-
-            if self.head.is_none() {
-                // If head is empty -> reset tail
-                self.tail = None;
-            }
-
-            self.length -= 1;
-
-            // Returning the old head's value
             old_head.borrow().value.clone()
         })
     }
-    pub fn peek(&self) -> Option<T> {
-        // Another way of accessing the head value (this time to just return it's copied value
-        match self.head.as_ref() {
-            Some(head) => {
-                // It sucks cause it's just too many operations and in the end I have to wrap it to Some again
-                Some(head.borrow().value.clone())
-            }
-            None => None,
-        }
 
-        // This looks much better
-        // self.head.as_ref().map(|head| head.borrow().value.clone())
+    pub fn peek(&self) -> Option<T> {
+        self.head.as_ref().map(|node| node.borrow().value.clone())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::queue::Queue;
+    use crate::stack::Stack;
 
     #[test]
     fn test_1() {
-        let mut queue: Queue<u32> = Queue::new();
-        queue.enqueue(1);
-        assert_eq!(queue.peek(), Some(1));
-        queue.enqueue(2);
-        assert_eq!(queue.peek(), Some(1));
-        queue.enqueue(3);
-        assert_eq!(queue.deque(), Some(1));
-        assert_eq!(queue.peek(), Some(2));
-        assert_eq!(queue.deque(), Some(2));
-        queue.enqueue(4);
-        assert_eq!(queue.peek(), Some(3));
-        assert_eq!(queue.deque(), Some(3));
-        assert_eq!(queue.peek(), Some(4));
-        assert_eq!(queue.peek(), Some(4));
-        assert_eq!(queue.peek(), Some(4));
-        assert_eq!(queue.deque(), Some(4));
+        let mut stack: Stack<u32> = Stack::new();
+        assert_eq!(stack.peek(), None);
+        stack.push(1);
+        assert_eq!(stack.peek(), Some(1));
+        stack.push(2);
+        assert_eq!(stack.peek(), Some(2));
+        stack.push(3);
+        stack.push(4);
+        assert_eq!(stack.peek(), Some(4));
+        assert_eq!(stack.pop(), Some(4));
+        assert_eq!(stack.pop(), Some(3));
+        assert_eq!(stack.pop(), Some(2));
+        assert_eq!(stack.peek(), Some(1));
+        stack.push(2);
+        assert_eq!(stack.peek(), Some(2));
+        assert_eq!(stack.pop(), Some(2));
+        assert_eq!(stack.pop(), Some(1));
+        assert_eq!(stack.peek(), None);
+        assert_eq!(stack.pop(), None);
     }
 }
