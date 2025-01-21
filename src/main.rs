@@ -2,6 +2,7 @@ use crate::two_crystal_balls::two_crystal_balls;
 
 mod binary_search_list;
 mod bubble_sort;
+mod doubly_linked_list;
 mod linear_search;
 mod queue;
 mod stack;
