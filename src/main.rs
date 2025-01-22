@@ -1,5 +1,6 @@
 use crate::two_crystal_balls::two_crystal_balls;
 
+mod array_list;
 mod binary_search_list;
 mod bubble_sort;
 mod doubly_linked_list;
