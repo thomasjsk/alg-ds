@@ -1,5 +1,5 @@
 use std::alloc::{alloc, dealloc, handle_alloc_error, Layout};
-use std::ptr;
+use std::{ptr, slice};
 
 pub struct ArrayList<T> {
     array: *mut T,
@@ -36,7 +36,7 @@ where
     }
 
     pub fn print(&self) -> &[T] {
-        unsafe { std::slice::from_raw_parts(self.array, self.cap) }
+        unsafe { slice::from_raw_parts(self.array, self.cap) }
     }
 
     pub fn push(&mut self, value: T) {
@@ -136,6 +136,23 @@ where
 
         self.array = new_array;
         self.cap = cap;
+    }
+}
+
+impl<T> Drop for ArrayList<T> {
+    fn drop(&mut self) {
+        for i in 0..self.len {
+            unsafe {
+                ptr::drop_in_place(self.array.add(i));
+            }
+        }
+
+        if self.cap > 0 {
+            unsafe {
+                let layout = Layout::array::<T>(self.cap).unwrap();
+                dealloc(self.array as *mut u8, layout);
+            }
+        }
     }
 }
 
